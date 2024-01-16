@@ -74,13 +74,14 @@ while (running) {
   reg[R_PC] += 2
   const op = instr >> 12 & 0xF
   // execute
+  // Code is redacted using https://www.jmeiners.com/lc3-vm/supplies/lc3-isa.pdf
   switch (op) {
     case OP_ADD:
       {
         const dr = (instr >> 9) & 0x7
         const sr1 = (instr >> 6) & 0x7
-        if (instr >> 5 & 0x1 === 1) {
-          const imm5 = instr & 0x1F
+        if (instr >> 5 & 0x1) {
+          const imm5 = signExtend(instr & 0x1F, 5)
           reg[dr] = reg[sr1] + imm5
         } else {
           const sr2 = instr & 0x7
@@ -91,20 +92,53 @@ while (running) {
       break
     case OP_AND:
       {
-
+        const dr = (instr >> 9) & 0x7
+        const sr1 = (instr >> 6) & 0x7
+        if (instr >> 5 & 0x1) {
+          const imm5 = signExtend(instr & 0x1F, 5)
+          reg[dr] = reg[sr1] & imm5
+        } else {
+          const sr2 = instr & 0x7
+          reg[dr] = reg[sr1] & reg[sr2]
+        }
+        updateFlags(dr)
       }
       break
     case OP_NOT:
       break
     case OP_BR:
+      {
+        const pcOffset = signExtend(instr & 0x1FF, 9)
+        const condFlag = (instr >> 9) & 0x7
+        if (condFlag & reg[R_COND]) {
+          reg[R_PC] += pcOffset
+        }
+      }
       break
     case OP_JMP:
+      {
+        const baseR = (instr >> 6) & 0x7
+        reg[R_PC] = reg[baseR]
+      }
       break
     case OP_JSR:
+      if (instr >> 11 & 0x1) {
+        const longPcOffset = signExtend(instr & 0x7FF, 11)
+        reg[R_PC] += longPcOffset
+      } else {
+        const baseR = (instr >> 6) & 0x7
+        reg[R_PC] = reg[baseR]
+      }
       break
     case OP_LD:
       break
     case OP_LDI:
+      {
+        const dr = (instr >> 9) & 0x7
+        const pcOffset = signExtend(instr & 0x1FF, 9)
+        reg[dr] = reg[R_PC] + pcOffset
+        updateFlags(dr)
+      }
       break
     case OP_LDR:
       break
@@ -140,9 +174,16 @@ function fetchInstr (memory, pc) {
 function updateFlags (r) {
   if (reg[r] === 0) {
     reg[R_COND] = FL_ZRO
-  } else if (reg[r] >> 15 === 1) {
+  } else if (reg[r] >> 15) {
     reg[R_COND] = FL_NEG
   } else {
     reg[R_COND] = FL_POS
   }
+}
+
+function signExtend (x, bitCount) {
+  if ((x >> (bitCount - 1)) & 1) {
+    x |= (0xFFFF << bitCount)
+  }
+  return x
 }
