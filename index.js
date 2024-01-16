@@ -105,6 +105,12 @@ while (running) {
       }
       break
     case OP_NOT:
+      {
+        const dr = (instr >> 9) & 0x7
+        const sr = (instr >> 6) & 0x7
+        reg[dr] = ~reg[sr]
+        updateFlags(dr)
+      }
       break
     case OP_BR:
       {
@@ -131,6 +137,12 @@ while (running) {
       }
       break
     case OP_LD:
+      {
+        const dr = (instr >> 9) & 0x7
+        const pcOffset = signExtend(instr & 0x1FF, 9)
+        reg[dr] = reg[R_PC] + pcOffset
+        updateFlags(dr)
+      }
       break
     case OP_LDI:
       {
@@ -141,8 +153,21 @@ while (running) {
       }
       break
     case OP_LDR:
+      {
+        const dr = (instr >> 9) & 0x7
+        const baseR = (instr >> 6) & 0x7
+        const offset = signExtend(instr & 0x3F, 6)
+        reg[dr] = reg[baseR] + offset
+        updateFlags(dr)
+      }
       break
     case OP_LEA:
+      {
+        const dr = (instr >> 9) & 0x7
+        const pcOffset = signExtend(instr & 0x1FF, 9)
+        reg[dr] = reg[R_PC] + pcOffset
+        updateFlags(dr)
+      }
       break
     case OP_ST:
       break
@@ -154,6 +179,7 @@ while (running) {
       break
     case OP_RES:
     case OP_RTI:
+      
     default:
       console.error('unrecognized opcode')
       break
