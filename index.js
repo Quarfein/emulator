@@ -11,7 +11,9 @@ if (process.argv.length === 2) {
   image = process.argv[2]
 }
 
-const memory = fs.openSync(image, 'r')
+image = fs.openSync(image, 'r')
+
+const memory = fetchMemory(image)
 
 // registers
 
@@ -69,9 +71,8 @@ reg[R_PC] = PC_START
 const running = true
 while (running) {
   // fetch
-  const instr = fetchInstr(memory, reg[R_PC])
-  // increments of two bytes for a 16 bit instruction
-  reg[R_PC] += 2
+  const instr = memory[reg[R_PC]]
+  reg[R_PC]++
   const op = instr >> 12 & 0xF
   // execute
   // Code is redacted using https://www.jmeiners.com/lc3-vm/supplies/lc3-isa.pdf
@@ -170,16 +171,32 @@ while (running) {
       }
       break
     case OP_ST:
+      {
+        const sr = (instr >> 9) & 0x7
+        const pcOffset = signExtend(instr & 0x1FF, 9)
+        memory[reg[R_PC] + pcOffset] = reg[sr]
+      }
       break
     case OP_STI:
+      {
+        const sr = (instr >> 9) & 0x7
+        const pcOffset = signExtend(instr & 0x1FF, 9)
+        memory[memory[reg[R_PC] + pcOffset]] = reg[sr]
+      }
       break
     case OP_STR:
+      {
+        const sr = (instr >> 9) & 0x7
+        const baseR = (instr >> 6) & 0x7
+        const offset = signExtend(instr & 0x3F, 6)
+        memory[reg[baseR] + offset] = reg[sr]
+      }
       break
     case OP_TRAP:
       break
     case OP_RES:
     case OP_RTI:
-      
+
     default:
       console.error('unrecognized opcode')
       break
@@ -187,14 +204,20 @@ while (running) {
 }
 
 // debug for bytes read
-/* console.log(fetchInstr(memory, 0x0000).toString(16))
-console.log(fetchInstr(memory, 0x0000))
-console.log(fetchInstr(memory, 0x0000) >> 12 & 0xF)
+/* console.log(memory[0x0].toString(16))
+console.log(memory[0x1].toString(16))
+console.log(memory[0x2].toString(16))
  */
-function fetchInstr (memory, pc) {
+function fetchMemory (image) {
+  const memory = []
+  let pc = 0
   const buffer = Buffer.alloc(2)
-  fs.readSync(memory, buffer, 0, 2, pc)
-  return buffer.readUInt16BE()
+  while (memory.length < 2**16) {
+    fs.readSync(image, buffer, 0, 2, pc)
+    memory.push(buffer.readUInt16BE())
+    pc += 2
+  }
+  return memory
 }
 
 function updateFlags (r) {
