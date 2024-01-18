@@ -195,8 +195,9 @@ while (running) {
     case OP_TRAP:
       break
     case OP_RES:
+      break
     case OP_RTI:
-
+      break
     default:
       console.error('unrecognized opcode')
       break
@@ -212,7 +213,7 @@ function fetchMemory (image) {
   const memory = []
   let pc = 0
   const buffer = Buffer.alloc(2)
-  while (memory.length < 2**16) {
+  while (memory.length < 2 ** 16) {
     fs.readSync(image, buffer, 0, 2, pc)
     memory.push(buffer.readUInt16BE())
     pc += 2
